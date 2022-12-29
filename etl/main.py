@@ -1,33 +1,20 @@
-"""ETL-module."""
+"""Main ETL-module."""
 import datetime
 import json
 import logging
-import os
 
 import backoff
+import contextlib
 import psycopg2
 import requests
-from dotenv import load_dotenv
 
-from dataclass import Movie
 from index_data import create_index_movies
+from models import Movie
+from settings import Settings
 from state import JsonFileStorage, State
 
-load_dotenv()
 
-
-last_state_key = "last_update"  # Имя ключа для файла с состояниями
-state_file_path = "last_state.json"  # Файл, в котором будут храниться состояния
 date_time = "2011-05-16 15:36:38"  # Выбираем дату с которой будет выполняться перенос фильмов
-
-dsn = {
-    'dbname': os.environ.get('DB_NAME'),
-    'user': os.environ.get('DB_USER'),
-    'password': os.environ.get('DB_PASSWORD'),
-    'host': os.environ.get('DB_HOST', 'postgres'),
-    'port': os.environ.get('DB_PORT', 5432),
-    'options': os.environ.get('DB_OPTIONS'),
-}
 
 
 class PostgresExtractor:
@@ -49,7 +36,7 @@ class PostgresExtractor:
         """
         movies_modified_list = []
         while True:
-            with psycopg2.connect(**dsn) as conn, conn.cursor() as cursor:
+            with contextlib.closing(psycopg2.connect(**Settings().dict()['dsn'])) as conn, conn.cursor() as cursor:
                 cursor.execute(f"""
                     SELECT
                     fw.id,
@@ -97,7 +84,7 @@ class PostgresExtractor:
         """
         movies_modified_list = []
         while True:
-            with psycopg2.connect(**dsn) as conn, conn.cursor() as cursor:
+            with contextlib.closing(psycopg2.connect(**Settings().dict()['dsn'])) as conn, conn.cursor() as cursor:
                 cursor.execute(f"""
                     SELECT id, modified
                     FROM content.person
@@ -174,7 +161,7 @@ class PostgresExtractor:
         """
         movies_modified_list = []
         while True:
-            with psycopg2.connect(**dsn) as conn, conn.cursor() as cursor:
+            with contextlib.closing(psycopg2.connect(**Settings().dict()['dsn'])) as conn, conn.cursor() as cursor:
                 cursor.execute(f"""
                     SELECT id, modified
                     FROM content.genre
@@ -298,7 +285,7 @@ class ElasticsearchLoader:
     def bulk_create(self, data, state: State):
         """Create bulk in ES."""
         now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        state.set_state(last_state_key, now)
+        state.set_state(Settings().dict()['last_state_key'], now)
         headers = {
             'Content-Type': 'application/x-ndjson',
         }
@@ -309,6 +296,6 @@ class ElasticsearchLoader:
 all_movies = PostgresExtractor(date=date_time).extract_modified_movies()  # Выполнение выгрузки данных из postgres
 last_trans = DataTransform(data=all_movies).data_to_es()  # Выполнение трансформации данных
 ElasticsearchLoader().create_index()  # Создание индекса
-storage = JsonFileStorage(state_file_path)  # Создание хранилища на основе файла
+storage = JsonFileStorage(Settings().dict()['state_file_path'])  # Создание хранилища на основе файла
 state = State(storage)  # Создание состояния, привязанного к хранилищу
 ElasticsearchLoader().bulk_create(last_trans, state)  # Запись в ES

@@ -65,7 +65,7 @@ class JsonFileStorage(BaseStorage):
                 return self.data
 
 
-class State(JsonFileStorage):
+class State:
     """Class for storage of state."""
 
     def __init__(self, storage: BaseStorage):
