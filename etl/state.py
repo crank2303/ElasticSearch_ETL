@@ -86,7 +86,7 @@ class State:
         self.storage.save_state({key: value})
 
     def get_state(self, key: str) -> Any:
-        """Set state for definite key.
+        """Get state for definite key.
 
         Args:
             key: key

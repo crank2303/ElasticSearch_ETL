@@ -1,14 +1,8 @@
 """Main ETL-module."""
-import datetime
-import json
-import logging
+import time
 
-import backoff
-import contextlib
-import psycopg2
-import requests
+from elasticsearch import Elasticsearch
 
-from models import Movie
 from extractor import PostgresExtractor
 from loader import ElasticsearchLoader
 from transformer import DataTransformer
@@ -16,11 +10,21 @@ from settings import Settings
 from state import JsonFileStorage, State
 
 
-date_time = "2011-05-16 15:36:38"  # Выбираем дату с которой будет выполняться перенос фильмов
+def main():
+    date_time = "2011-05-16 15:36:38"  # Выбираем дату с которой будет выполняться перенос фильмов
+    es = Elasticsearch(Settings().dict()['es_host'], request_timeout=300)
+    ElasticsearchLoader(es).create_index()  # Создание индекса
+    storage = JsonFileStorage(Settings().dict()['state_file_path'])  # Создание хранилища на основе файла
+    state = State(storage)  # Создание состояния, привязанного к хранилищу
+    while True:
+        all_movies = PostgresExtractor().extract_modified_data(date=date_time, query=Settings().dict()['query_movies'])
+        if all_movies is None:
+            break
+        date_time = all_movies[-1][6]  # дата изменения последней записи из пачки (чтобы с этой даты начать следующую пачку)
+        transformed_data = DataTransformer().data_to_es(data=all_movies)
+        ElasticsearchLoader(es).bulk_create(transformed_data, state)
+        time.sleep(5)
 
-all_movies = PostgresExtractor(date=date_time).extract_modified_movies()  # Выполнение выгрузки данных из postgres
-last_trans = DataTransformer(data=all_movies).data_to_es()  # Выполнение трансформации данных
-ElasticsearchLoader().create_index()  # Создание индекса
-storage = JsonFileStorage(Settings().dict()['state_file_path'])  # Создание хранилища на основе файла
-state = State(storage)  # Создание состояния, привязанного к хранилищу
-ElasticsearchLoader().bulk_create(last_trans, state)  # Запись в ES
+
+if __name__ == '__main__':
+    main()
