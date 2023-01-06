@@ -5,7 +5,7 @@ from pydantic import BaseModel, validator
 from pydantic.schema import List, Optional
 
 
-class PersonModel(BaseModel):
+class Person(BaseModel):
     """Dataclass for person model."""
 
     id: str
