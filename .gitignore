@@ -2,5 +2,5 @@
 __pycache__/
 venv/
 .idea/
-etl/last_state.json
+last_state.json
 check_ext.py

@@ -6,4 +6,5 @@ loader.py - загружает данные в ES.
 models.py - модуль с моделями.
 state.py - реализация состояния.
 settings.py - там все настройки: запросы, данные для подключений к бд и тд.
-last_state.json - хранит состояние.
+es_schema.py - схема индекса ElasticSearch.
+queries.py - запросы SQL Postgres.
