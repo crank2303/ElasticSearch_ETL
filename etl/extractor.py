@@ -13,7 +13,7 @@ class PostgresExtractor:
     """This class extracts data from psql."""
 
     @backoff.on_exception(backoff.expo, exception=ConnectionError)
-    def extract_modified_data(self, date: str, query: dict):
+    def extract_modified_data(self, date: str, query: dict, offset_counter: int):
         """Extract movies, checked modified movies.
 
         Returns:
@@ -21,7 +21,7 @@ class PostgresExtractor:
         """
         with contextlib.closing(psycopg2.connect(**settings.dsn.dict(), cursor_factory=DictCursor)) \
                 as conn, conn.cursor() as cursor:
-            cursor.execute(query['query'] % tuple([date] * query['num_of_s']))
+            cursor.execute(query['query'] % (date, offset_counter))
             movies_modified_batch = cursor.fetchmany(settings.batch_size)
             if len(movies_modified_batch) == 0:
                 return None

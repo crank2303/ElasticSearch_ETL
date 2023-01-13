@@ -26,12 +26,13 @@ query_movies: dict = {'query': f"""
             LEFT JOIN content.person p ON p.id = pfw.person_id
             LEFT JOIN content.genre_film_work gfw ON gfw.film_work_id = fw.id
             LEFT JOIN content.genre g ON g.id = gfw.genre_id
-            WHERE fw.modified > '%s'
+            WHERE GREATEST (fw.modified, p.modified, g.modified) > '%s'
             GROUP BY fw.id
             ORDER BY fw.modified
-            LIMIT {settings.batch_size};
+            LIMIT {settings.batch_size}
+            OFFSET {settings.batch_size} * %d;
             """,
-                      'num_of_s': 1,
+                      'num_of_s': 2,
                       'name_of_query': 'movies'}
 query_persons: dict = {'query': f"""
                 SELECT id, modified, full_name

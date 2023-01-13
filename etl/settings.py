@@ -22,6 +22,7 @@ class Settings(BaseSettings):
     batch_size: int = 100
     es_host: str = Field(..., env="ES_HOST")
     es_index_name: str = Field(..., env="ES_INDEX_NAME")
+    offset_counter: int = 0
 
     class Config:
         env_file = '.env'
